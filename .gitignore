@@ -23,3 +23,10 @@ profile.cov
 # Editor/IDE
 .idea/
 .vscode/
+
+# others
+__pycache__/
+*.log
+*.tmp
+*.temp
+*.swp
