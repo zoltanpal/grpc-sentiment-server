@@ -37,7 +37,7 @@ jobs:
             mkdir -p $WORK_DIR
             cd $WORK_DIR
             
-            #git config --global --add safe.directory $WORK_DIR
+            git config --global --add safe.directory $WORK_DIR
 
             # Clone repo if missing
             if [ ! -d ".git" ]; then
@@ -57,6 +57,7 @@ jobs:
 
             source .venv/bin/activate
             pip install --upgrade pip setuptools wheel
+            cd sentiment
             pip install -r requirements.txt
 
             # Download language models (if script exists)
