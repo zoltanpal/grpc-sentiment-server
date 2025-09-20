@@ -37,7 +37,7 @@ jobs:
             mkdir -p $WORK_DIR
             cd $WORK_DIR
             
-            git config --global --add safe.directory $WORK_DIR
+            #git config --global --add safe.directory $WORK_DIR
 
             # Clone repo if missing
             if [ ! -d ".git" ]; then
