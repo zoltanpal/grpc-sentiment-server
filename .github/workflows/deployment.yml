@@ -36,6 +36,7 @@ jobs:
             # Ensure work dir exists
             mkdir -p $WORK_DIR
             cd $WORK_DIR
+            
             git config --global --add safe.directory $WORK_DIR
 
             # Clone repo if missing
@@ -53,6 +54,7 @@ jobs:
             if [ ! -d ".venv" ]; then
               python3 -m venv .venv
             fi
+
             source .venv/bin/activate
             pip install --upgrade pip setuptools wheel
             pip install -r requirements.txt
@@ -61,6 +63,9 @@ jobs:
             if [ -f download_language_models.sh ]; then
               bash download_language_models.sh $WORK_DIR
             fi
+
+            # Fix ownership for runtime
+            sudo chown -R www-data:www-data $WORK_DIR
 
             echo ">>> Restarting gRPC sentiment service"
             sudo systemctl daemon-reload
