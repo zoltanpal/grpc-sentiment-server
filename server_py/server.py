@@ -155,32 +155,45 @@ class SentimentService(pb_grpc.SentimentServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             return pb.AnalyzeResponse(text=request.text, dominant_label="error")
 
+
     def BatchAnalyze(self, request: pb.BatchAnalyzeRequest, context) -> pb.BatchAnalyzeResponse:
+        """
+        Analyze multiple texts, grouped by language. Uses analyzer.analyze_batch if available,
+        falling back to per-text Analyze otherwise.
+        """
         results = []
 
-        # Group texts by language so we can call analyze_batch per language
-        by_lang = {}
+        # Group inputs by language
+        by_lang: dict[str, list[str]] = {}
         for item in request.items:
             lang = item.language or "hun"
-            by_lang.setdefault(lang, []).append((item.text, item))
+            by_lang.setdefault(lang, []).append(item.text)
 
-        for lang, pairs in by_lang.items():
-            texts = [t for t, _ in pairs]
+        for lang, texts in by_lang.items():
             analyzer = SentimentAnalyzerFactory.get_analyzer(lang)
-
             try:
-                if hasattr(analyzer, "analyze_batch"):
+                if hasattr(analyzer, "analyze_batch") and callable(analyzer.analyze_batch):
+                    # One forward pass for all texts
                     batch_out = analyzer.analyze_batch(texts)
-                    # batch_out is List[Sentiments]
-                    for (text, _), sentiments in zip(pairs, batch_out):
+                    for text, sentiments in zip(texts, batch_out):
                         results.append(map_result_to_response(text, sentiments))
                 else:
-                    for text, _ in pairs:
+                    # Fallback: process each text separately
+                    for text in texts:
                         raw = analyzer.analyze_text(text)
                         results.append(map_result_to_response(text, raw))
-            except Exception:
-                for text, _ in pairs:
-                    results.append(pb.AnalyzeResponse(title=text, sentiment_key="error", sentiment_value=0.0, sentiments={}))
+            except Exception as e:
+                log.exception("BatchAnalyze failed (language=%r)", lang)
+                for text in texts:
+                    results.append(
+                        pb.AnalyzeResponse(
+                            title=text,
+                            sentiment_key="error",
+                            sentiment_value=0.0,
+                            sentiments={}
+                        )
+                    )
+
         return pb.BatchAnalyzeResponse(results=results)
 
 # ---------------------------------------------------------------------------
