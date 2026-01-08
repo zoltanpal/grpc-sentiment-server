@@ -1,50 +1,67 @@
+# libs/sentiment_analyzers/analyzers/dan/sentiment_analyzer.py
+
+from __future__ import annotations
+
+from typing import List
+
 from libs.sentiment_analyzers.analyzers.base_analyzer import SentimentAnalyzerSingleton
 from libs.sentiment_analyzers.models.sentiments import Sentiments
 
 
+LABEL_MAPPING_DANISH = {
+    # If the model outputs Danish labels:
+    "positiv": "positive",
+    "negativ": "negative",
+    "neutral": "neutral",
+
+    # If it outputs generic labels:
+    "LABEL_0": "negative",
+    "LABEL_1": "neutral",
+    "LABEL_2": "positive",
+
+    # If it outputs English labels:
+    "positive": "positive",
+    "negative": "negative",
+    "neutral": "neutral",
+}
+
+
 class DanishSentimentAnalyzer(SentimentAnalyzerSingleton):
-    """
-    A singleton class for analyzing Danish text sentiment using a pre-trained LLM.
+    # Let the base singleton handle instantiation/caching
+    model_name: str = "larskjeldgaard/senda"
+    truncation: bool = True
+    top_k: int = 3  # or None / omit if your base supports it
 
-    This class inherits from `SentimentAnalyzerSingleton` to ensure only one instance of the model
-    is used for Danish sentiment analysis.
-    """
-    _instance = None  # Singleton instance
+    def analyze_text(self, text: str) -> Sentiments:
+        preds = self.pipeline(text)[0]  # list[{"label":..., "score":...}, ...]
 
-    def __new__(cls):
-        """
-        Creates and returns the singleton instance.
-        The model is loaded only once when the first instance is created.
+        scores = {}
+        for item in preds:
+            raw_label = item["label"]
+            label = LABEL_MAPPING_DANISH.get(raw_label, raw_label)
+            scores[label] = round(float(item["score"]), 4)
 
-        Returns:
-            DanishSentimentAnalyzer: The singleton instance of the sentiment analyzer.
-        """
-        if cls._instance is None:
-            # If no instance exists, create one using the base class's __new__ method
-            cls._instance = super().__new__(cls, "larskjeldgaard/senda")
-        return cls._instance
+        # Ensure Sentiments always has expected keys (optional, depends on your Sentiments model)
+        scores.setdefault("negative", 0.0)
+        scores.setdefault("neutral", 0.0)
+        scores.setdefault("positive", 0.0)
 
-    def analyze_text(self, text: str):
-        """
-        Analyzes the sentiment of a given text by calling the base class's `analyze` method
-        to perform sentiment analysis, processes the results, and returns them in the `Sentiments` format.
+        return Sentiments(**scores)
 
-        Args:
-            text (str): The Danish text to analyze for sentiment.
-        Returns:
-            Sentiments: A `Sentiments` object containing the processed sentiment results.
-        """
-        sentiment_prediction = self.analyze(text)
-        sentiment_results = {
-            item["label"]: round(item["score"], 4) for item in sentiment_prediction[0]
-        }
+    def analyze_batch(self, texts: List[str]) -> List[Sentiments]:
+        preds_batch = self.pipeline(texts)
 
-        # Rename the keys
-        sentiment_results["negative"] = sentiment_results["negativ"]
-        sentiment_results["positive"] = sentiment_results["positiv"]
+        out: List[Sentiments] = []
+        for preds in preds_batch:
+            scores = {}
+            for item in preds:
+                raw_label = item["label"]
+                label = LABEL_MAPPING_DANISH.get(raw_label, raw_label)
+                scores[label] = round(float(item["score"]), 4)
 
-        # Delete the unnecessary key-value pairs
-        del sentiment_results["negativ"]
-        del sentiment_results["positiv"]
+            scores.setdefault("negative", 0.0)
+            scores.setdefault("neutral", 0.0)
+            scores.setdefault("positive", 0.0)
 
-        return Sentiments(**sentiment_results)
+            out.append(Sentiments(**scores))
+        return out

@@ -36,8 +36,9 @@ import os
 import time
 import logging
 from concurrent import futures
-from dataclasses import asdict, is_dataclass
-from typing import Any, Mapping
+from typing import Any
+
+from libs.functions import to_dict  # type: ignore
 
 import grpc
 
@@ -59,40 +60,7 @@ logging.basicConfig(
 log = logging.getLogger("sentiment-grpc-server")
 
 
-def _to_dict(obj: Any) -> dict:
-    """
-    Normalize various Python objects into a dictionary.
 
-    Conversion order:
-      - Mapping -> dict(...)
-      - dataclass -> asdict(...)
-      - pydantic v2 -> .model_dump()
-      - pydantic v1 -> .dict()
-      - generic objects -> vars(obj)
-      - None/unknown -> {}
-    """
-    if obj is None:
-        return {}
-    if isinstance(obj, Mapping):
-        return dict(obj)
-    if is_dataclass(obj):
-        return asdict(obj)
-    if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
-        try:
-            return obj.model_dump()  # pydantic v2
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    if hasattr(obj, "dict") and callable(getattr(obj, "dict")):
-        try:
-            return obj.dict()  # pydantic v1
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    if hasattr(obj, "__dict__"):
-        try:
-            return vars(obj)
-        except Exception:  # pragma: no cover - best-effort
-            pass
-    return {}
 
 
 def map_result_to_response(text: str, result_obj: Any) -> pb.AnalyzeResponse:
@@ -104,7 +72,7 @@ def map_result_to_response(text: str, result_obj: Any) -> pb.AnalyzeResponse:
       - sentiment_value: dominant score
       - sentiments: all scores as a map
     """
-    result = _to_dict(result_obj)
+    result = to_dict(result_obj)
 
     if not result:
         return pb.AnalyzeResponse(
@@ -126,7 +94,7 @@ def map_result_to_response(text: str, result_obj: Any) -> pb.AnalyzeResponse:
         title=text,
         sentiment_key=sentiment_key,
         sentiment_value=float(sentiment_value),
-        sentiments={str(k): float(v) for k, v in result.items() if isinstance(v, (int, float))}
+        sentiments=result
     )
 
 
