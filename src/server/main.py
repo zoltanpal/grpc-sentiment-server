@@ -41,8 +41,8 @@ from typing import Any, Mapping
 
 import grpc
 
-import pb.sentiment_pb2 as pb
 import pb.sentiment_pb2_grpc as pb_grpc
+from pb import sentiment_pb2 as pb
 
 # Sentiment Analyzer Factory
 from libs.sentiment_analyzers.factory.sentiment_factory import SentimentAnalyzerFactory  # type: ignore
