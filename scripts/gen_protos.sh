@@ -13,5 +13,4 @@ python -m grpc_tools.protoc \
   --grpc_python_out="$OUT" \
   "$ROOT/protos/sentiment.proto"
 
-
 sed -i '' 's/^import sentiment_pb2 as/from pb import sentiment_pb2 as/' src/pb/sentiment_pb2_grpc.py
