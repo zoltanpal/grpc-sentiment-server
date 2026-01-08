@@ -32,3 +32,5 @@ __pycache__/
 *.swp
 *.zip
 *.gzip
+
+grpc_sentiment_server.egg-info/
