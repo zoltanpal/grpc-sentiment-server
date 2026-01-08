@@ -41,9 +41,8 @@ from typing import Any, Mapping
 
 import grpc
 
-# Generated gRPC modules (ensure sentiment_pb2.py and sentiment_pb2_grpc.py are in this folder)
-import sentiment_pb2 as pb
-import sentiment_pb2_grpc as pb_grpc
+import pb.sentiment_pb2 as pb
+import pb.sentiment_pb2_grpc as pb_grpc
 
 # Sentiment Analyzer Factory
 from libs.sentiment_analyzers.factory.sentiment_factory import SentimentAnalyzerFactory  # type: ignore

@@ -1,9 +1,9 @@
 from pydoc import text
 import grpc
 
-import server_py.sentiment_pb2 as pb
-import server_py.sentiment_pb2_grpc as pb_grpc
 
+import pb.sentiment_pb2 as pb
+import pb.sentiment_pb2_grpc as pb_grpc
 
 texts = [
     ("A MOL vezetője nyilatkozott a sajtónak Debrecenben.", 'hun'),

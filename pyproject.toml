@@ -1,0 +1,24 @@
+[project]
+name = "grpc-sentiment-server"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "grpcio>=1.66",
+    "grpcio-tools>=1.66",
+    "protobuf>=5.28",
+    "nltk>=3.9",
+    "transformers>=4.49",
+    "torch>=2.6"
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
