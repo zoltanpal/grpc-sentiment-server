@@ -8,7 +8,7 @@ OUT="$ROOT/src/pb"
 mkdir -p "$OUT"
 
 python -m grpc_tools.protoc \
-  -I "$ROOT/src/proto" \
+  -I "$ROOT/protos" \
   --python_out="$OUT" \
   --grpc_python_out="$OUT" \
-  $(find "$ROOT/src/proto" -name "*.proto")
+  $(find "$ROOT/protos" -name "*.proto")
