@@ -36,7 +36,7 @@ jobs:
             SERVICE_NAME='grpc-sentiment.service'
 
 
-            echo ">>> Deploying gRPC Sentiment Server"
+            echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
             echo "    ENV     : $ENV"
             echo "    WORK_DIR : $WORK_DIR"
             echo "    BRANCH   : $BRANCH"
@@ -44,12 +44,42 @@ jobs:
             echo
 
             # export HOME=/var/www
-            # mkdir -p "$HOME"
 
-            # echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
+            mkdir -p "$WORK_DIR"
+            cd "$WORK_DIR"
 
-            # mkdir -p "$WORK_DIR"
-            # cd "$WORK_DIR"
+            REPO_DIR="$(pwd -P)"
+            export HOME="${HOME:-/home/$(whoami)}"
+            git config --global --add safe.directory "$REPO_DIR"
+            
+            # --- Clone repo if missing ---
+            if [ ! -d ".git" ]; then
+              echo ">>> Cloning repository..."
+              git clone "$REPO_SSH" .
+            fi
+
+            echo ">>> Fetch & reset to origin/$BRANCH"
+            git fetch --prune origin
+            git checkout -f "$BRANCH" || git checkout -B "$BRANCH" "origin/$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            git clean -fd
+
+            # --- Init pyenv (non-interactive shell does NOT load .bashrc by default) ---
+            echo ">>> Initializing pyenv..."
+            export PYENV_ROOT="$HOME/.pyenv"
+            export PATH="$PYENV_ROOT/bin:$PATH"
+            if command -v pyenv >/dev/null 2>&1; then
+              eval "$(pyenv init -)"
+            else
+              echo "ERROR: pyenv not found at $PYENV_ROOT/bin/pyenv (or not in PATH)."
+              echo "Install pyenv for this deploy user, or adjust PYENV_ROOT."
+              exit 1
+            fi
+
+            echo ">>> pyenv version: $(pyenv version || true)"
+            echo ">>> python (pyenv) : $(python -V 2>&1 || true)"
+            echo
+
 
             # REPO_DIR="$(pwd -P)"
             # git config --global --add safe.directory "$REPO_DIR"
