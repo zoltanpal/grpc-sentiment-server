@@ -27,42 +27,53 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            set -e
+            set -Eeuo pipefail
 
             ENV='${{ github.event.inputs.environment }}'
             WORK_DIR='${{ secrets.SERVER_DEPLOYMENT_PATH }}'
+            BRANCH='${{ github.ref_name }}'
+            REPO_SSH='git@github.com:zoltanpal/grpc-sentiment-server.git'
+            SERVICE_NAME='grpc-sentiment.service'
 
-            export HOME=/var/www
-            mkdir -p "$HOME"
 
-            echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
+            echo ">>> Deploying gRPC Sentiment Server"
+            echo "    ENV     : $ENV"
+            echo "    WORK_DIR : $WORK_DIR"
+            echo "    BRANCH   : $BRANCH"
+            echo "    USER     : $(whoami) (uid=$(id -u))"
+            echo
 
-            mkdir -p "$WORK_DIR"
-            cd "$WORK_DIR"
+            # export HOME=/var/www
+            # mkdir -p "$HOME"
 
-            REPO_DIR="$(pwd -P)"
-            git config --global --add safe.directory "$REPO_DIR"
+            # echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
 
-            if [ ! -d ".git" ]; then
-              git clone git@github.com:zoltanpal/grpc-sentiment-server.git .
-            fi
+            # mkdir -p "$WORK_DIR"
+            # cd "$WORK_DIR"
 
-            git fetch origin
-            git checkout '${{ github.ref_name }}'
-            git reset --hard "origin/${{ github.ref_name }}"
-            git clean -fd
+            # REPO_DIR="$(pwd -P)"
+            # git config --global --add safe.directory "$REPO_DIR"
 
-            # Fix ownership for runtime
-            sudo chown -R www-data:www-data $WORK_DIR
+            # if [ ! -d ".git" ]; then
+            #   git clone git@github.com:zoltanpal/grpc-sentiment-server.git .
+            # fi
 
-            # Set up Python virtual environment 
-            if [ ! -d ".venv" ]; 
-              then python -m venv .venv 
-            fi
+            # git fetch origin
+            # git checkout '${{ github.ref_name }}'
+            # git reset --hard "origin/${{ github.ref_name }}"
+            # git clean -fd
 
-            source .venv/bin/activate
-            pip install --upgrade pip setuptools wheel
-            pip install -e .
+            # # Set up Python virtual environment 
+            # if [ ! -d ".venv" ]; 
+            #   then python -m venv .venv 
+            # fi
+
+            # source .venv/bin/activate
+            # pip install --upgrade pip setuptools wheel
+            # pip install -e .
+
+            # # Fix ownership for runtime
+            # sudo chown -R www-data:www-data $WORK_DIR
 
             echo ">>> Restarting gRPC sentiment service" 
             # sudo restart grpc-sentiment.service 
