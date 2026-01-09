@@ -28,47 +28,27 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
-            ENV=${{ github.event.inputs.environment }}
-            WORK_DIR=${{ secrets.SERVER_DEPLOYMENT_PATH }}
+            
+            ENV='${{ github.event.inputs.environment }}'
+            WORK_DIR='${{ secrets.SERVER_DEPLOYMENT_PATH }}'
+
+            export HOME=/var/www
+            mkdir -p "$HOME"
 
             echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
 
-            # Ensure work dir exists
-            mkdir -p $WORK_DIR
-            cd $WORK_DIR
-            
-            git config --global --add safe.directory $WORK_DIR
+            mkdir -p "$WORK_DIR"
+            cd "$WORK_DIR"
 
-            # Clone repo if missing
+            REPO_DIR="$(pwd -P)"
+            git config --global --add safe.directory "$REPO_DIR"
+
             if [ ! -d ".git" ]; then
               git clone git@github.com:zoltanpal/grpc-sentiment-server.git .
             fi
 
-            # Fetch latest changes and reset to current ref
             git fetch origin
-            git reset --hard origin/${{ github.ref_name }}
+            git checkout '${{ github.ref_name }}'
+            git reset --hard "origin/${{ github.ref_name }}"
             git clean -fd
-            git checkout ${{ github.ref_name }}
 
-            # Set up Python virtual environment
-            if [ ! -d ".venv" ]; then
-              python3 -m venv .venv
-            fi
-
-            source .venv/bin/activate
-            pip install --upgrade pip setuptools wheel
-            cd sentiment
-            pip install -r requirements.txt
-
-            # Download language models (if script exists)
-            if [ -f download_language_models.sh ]; then
-              bash download_language_models.sh $WORK_DIR
-            fi
-
-            # Fix ownership for runtime
-            sudo chown -R www-data:www-data $WORK_DIR
-
-            echo ">>> Restarting gRPC sentiment service"
-            sudo systemctl daemon-reload
-            #sudo systemctl restart grpc-sentiment.service
-            #sudo systemctl status grpc-sentiment.service --no-pager
