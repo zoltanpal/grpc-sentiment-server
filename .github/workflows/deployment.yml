@@ -55,6 +55,15 @@ jobs:
             # Fix ownership for runtime
             sudo chown -R www-data:www-data $WORK_DIR
 
+            # Set up Python virtual environment 
+            if [ ! -d ".venv" ]; 
+              then python -m venv .venv 
+            fi
+
+            source .venv/bin/activate
+            pip install --upgrade pip setuptools wheel
+            pip install -e .
+
             echo ">>> Restarting gRPC sentiment service" 
             # sudo restart grpc-sentiment.service 
             # sudo systemctl status grpc-sentiment.service --no-pager
