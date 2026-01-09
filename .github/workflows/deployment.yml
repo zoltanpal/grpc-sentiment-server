@@ -28,7 +28,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
-            
+
             ENV='${{ github.event.inputs.environment }}'
             WORK_DIR='${{ secrets.SERVER_DEPLOYMENT_PATH }}'
 
@@ -52,3 +52,9 @@ jobs:
             git reset --hard "origin/${{ github.ref_name }}"
             git clean -fd
 
+            # Fix ownership for runtime
+            sudo chown -R www-data:www-data $WORK_DIR
+
+            echo ">>> Restarting gRPC sentiment service" 
+            # sudo restart grpc-sentiment.service 
+            # sudo systemctl status grpc-sentiment.service --no-pager
