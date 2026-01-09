@@ -80,6 +80,34 @@ jobs:
             echo ">>> python (pyenv) : $(python -V 2>&1 || true)"
             echo
 
+            VENV="$WORK_DIR/.venv"
+            if [ -x "$VENV/bin/python" ]; then
+              TARGET="$(readlink -f "$VENV/bin/python" || true)"
+              echo ">>> Existing venv python: $TARGET"
+              if echo "$TARGET" | grep -qE '^/root/\.pyenv/'; then
+                echo ">>> Venv points to root pyenv. Rebuilding venv..."
+                rm -rf "$VENV"
+              fi
+            fi
+
+            if [ ! -d "$VENV" ]; then
+              echo ">>> Creating venv with --copies (so runtime does not depend on ~/.pyenv permissions)"
+              python -m venv --copies "$VENV"
+            fi
+
+
+            echo ">>> Venv python: $("$VENV/bin/python" -V 2>&1)"
+            echo ">>> Venv python path: $(readlink -f "$VENV/bin/python" || true)"
+            echo
+
+            # --- Install dependencies (use venv pip directly, no activate needed) ---
+            echo ">>> Installing Python dependencies..."
+            "$VENV/bin/pip" install --upgrade pip setuptools wheel
+            "$VENV/bin/pip" install ."
+
+
+
+
 
             # REPO_DIR="$(pwd -P)"
             # git config --global --add safe.directory "$REPO_DIR"
