@@ -103,7 +103,7 @@ jobs:
             # --- Install dependencies (use venv pip directly, no activate needed) ---
             echo ">>> Installing Python dependencies..."
             "$VENV/bin/pip" install --upgrade pip setuptools wheel
-            "$VENV/bin/pip" install ."
+            "$VENV/bin/pip" install .
 
 
 
