@@ -34,34 +34,8 @@ class DanishSentimentAnalyzer(SentimentAnalyzerSingleton):
 
     def analyze_text(self, text: str) -> Sentiments:
         preds = self.pipeline(text)[0]  # list[{"label":..., "score":...}, ...]
-
-        scores = {}
-        for item in preds:
-            raw_label = item["label"]
-            label = LABEL_MAPPING_DANISH.get(raw_label, raw_label)
-            scores[label] = round(float(item["score"]), 4)
-
-        # Ensure Sentiments always has expected keys (optional, depends on your Sentiments model)
-        scores.setdefault("negative", 0.0)
-        scores.setdefault("neutral", 0.0)
-        scores.setdefault("positive", 0.0)
-
-        return Sentiments(**scores)
+        return self._map_predictions_to_sentiments(preds, LABEL_MAPPING_DANISH)
 
     def analyze_batch(self, texts: List[str]) -> List[Sentiments]:
         preds_batch = self.pipeline(texts)
-
-        out: List[Sentiments] = []
-        for preds in preds_batch:
-            scores = {}
-            for item in preds:
-                raw_label = item["label"]
-                label = LABEL_MAPPING_DANISH.get(raw_label, raw_label)
-                scores[label] = round(float(item["score"]), 4)
-
-            scores.setdefault("negative", 0.0)
-            scores.setdefault("neutral", 0.0)
-            scores.setdefault("positive", 0.0)
-
-            out.append(Sentiments(**scores))
-        return out
+        return self._map_batch_predictions_to_sentiments(preds_batch, LABEL_MAPPING_DANISH)

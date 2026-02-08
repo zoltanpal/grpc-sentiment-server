@@ -36,17 +36,16 @@ import os
 import time
 import logging
 from concurrent import futures
-from typing import Any
-
-from libs.functions import to_dict  # type: ignore
+from dataclasses import asdict
 
 import grpc
 
 import pb.sentiment_pb2_grpc as pb_grpc
 from pb import sentiment_pb2 as pb
 
-# Sentiment Analyzer Factory
+# Sentiment Analyzer Factory & Sentiments dataclass
 from libs.sentiment_analyzers.factory.sentiment_factory import SentimentAnalyzerFactory  # type: ignore
+from libs.sentiment_analyzers.models.sentiments import Sentiments  # type: ignore
 
 # ---------------------------------------------------------------------------
 
@@ -63,18 +62,15 @@ log = logging.getLogger("sentiment-grpc-server")
 
 
 
-def map_result_to_response(text: str, result_obj: Any) -> pb.AnalyzeResponse:
+def map_result_to_response(text: str, result_obj: Sentiments) -> pb.AnalyzeResponse:
     """
-    Map analyzer output (dict like {"negative": 0.75, "positive": 0.03, "compound": -0.61, ...})
-    to the gRPC AnalyzeResponse format:
+    Map analyzer output (Sentiments dataclass) to the gRPC AnalyzeResponse format:
       - title: original text
       - sentiment_key: dominant label (ignores 'compound')
       - sentiment_value: dominant score
       - sentiments: all scores as a map
     """
-    result = to_dict(result_obj)
-
-    if not result:
+    if not result_obj:
         return pb.AnalyzeResponse(
             title=text,
             sentiment_key="unknown",
@@ -82,19 +78,29 @@ def map_result_to_response(text: str, result_obj: Any) -> pb.AnalyzeResponse:
             sentiments={}
         )
 
-    # Determine dominant label (ignore compound)
-    numeric_labels = {k: v for k, v in result.items() if k != "compound"}
-    if numeric_labels:
-        sentiment_key, sentiment_value = max(numeric_labels.items(), key=lambda kv: kv[1])
+    # Determine dominant label by checking dataclass fields directly (ignore compound)
+    sentiment_scores = {
+        "negative": result_obj.negative,
+        "very_negative": result_obj.very_negative,
+        "neutral": result_obj.neutral,
+        "positive": result_obj.positive,
+        "very_positive": result_obj.very_positive,
+    }
+    
+    if sentiment_scores:
+        sentiment_key, sentiment_value = max(sentiment_scores.items(), key=lambda kv: kv[1])
     else:
-        sentiment_key, sentiment_value = "compound", float(result.get("compound", 0.0))
+        sentiment_key, sentiment_value = "compound", result_obj.compound
+
+    # Convert to dict once for protobuf response
+    result_dict = asdict(result_obj)
 
     # Build response
     return pb.AnalyzeResponse(
         title=text,
         sentiment_key=sentiment_key,
         sentiment_value=float(sentiment_value),
-        sentiments=result
+        sentiments=result_dict
     )
 
 

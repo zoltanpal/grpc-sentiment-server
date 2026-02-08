@@ -25,26 +25,11 @@ class HungarianSentimentAnalyzer(SentimentAnalyzerSingleton):
         Analyze a single Hungarian text and return sentiment scores.
         """
         predictions = self.pipeline(text)[0]  # pipeline returns [[{label, score}, ...]]
-        return Sentiments(
-            **{
-                LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
-                for item in predictions
-            }
-        )
+        return self._map_predictions_to_sentiments(predictions, LABEL_MAPPING_ROBERTA)
 
     def analyze_batch(self, texts: List[str]) -> List[Sentiments]:
         """
         Analyze a batch of texts in one forward pass for efficiency.
         """
         predictions_batch = self.pipeline(texts)
-        results: List[Sentiments] = []
-        for predictions in predictions_batch:
-            results.append(
-                Sentiments(
-                    **{
-                        LABEL_MAPPING_ROBERTA[item["label"]]: round(item["score"], 4)
-                        for item in predictions
-                    }
-                )
-            )
-        return results
+        return self._map_batch_predictions_to_sentiments(predictions_batch, LABEL_MAPPING_ROBERTA)

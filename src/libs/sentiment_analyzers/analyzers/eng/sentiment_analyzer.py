@@ -69,3 +69,32 @@ class EnglishSentimentAnalyzer:
             positive=results.get("pos", 0.0),
             compound=results.get("compound", 0.0),
         )
+
+    def analyze_batch(self, texts: list) -> list:
+        """
+        Analyzes the sentiment of multiple English texts using VADER.
+        Processes all texts efficiently.
+
+        Args:
+            texts (list): List of English texts to analyze for sentiment.
+        Returns:
+            list: List of Sentiments objects with sentiment scores.
+        """
+        results = []
+        for text in texts:
+            if not text:
+                results.append(Sentiments())
+                continue
+            
+            # Get sentiment polarity scores for the text
+            polarity = self.sid.polarity_scores(text)
+            
+            results.append(
+                Sentiments(
+                    negative=polarity.get("neg", 0.0),
+                    neutral=polarity.get("neu", 0.0),
+                    positive=polarity.get("pos", 0.0),
+                    compound=polarity.get("compound", 0.0),
+                )
+            )
+        return results
