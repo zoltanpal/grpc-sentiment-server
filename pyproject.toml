@@ -3,7 +3,7 @@ name = "grpc-sentiment-server"
 version = "0.1.0"
 description = ""
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "grpcio>=1.66",
     "grpcio-tools>=1.66",
