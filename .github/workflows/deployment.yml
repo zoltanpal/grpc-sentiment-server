@@ -2,24 +2,10 @@ name: Deploy gRPC Sentiment Server
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Select environment to deploy"
-        required: true
-        default: "dev"
-        type: choice
-        options:
-          - dev
-          - prod
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    env:
-      ENV: ${{ github.event.inputs.environment }}
-      BRANCH_NAME: ${{ github.ref_name }}
-      WORK_DIR: ${{ github.event.inputs.environment == 'prod' && secrets.PROD_SERVER_DEPLOYMENT_PATH || secrets.DEV_SERVER_DEPLOYMENT_PATH }}
 
     steps:
       - name: Checkout repository
@@ -36,8 +22,10 @@ jobs:
           script: |
             set -eu
 
+            BRANCH_NAME="${{ github.ref_name }}"
+            WORK_DIR="${{ secrets.SERVER_DEPLOYMENT_PATH }}"
+
             echo ">>> Deploying gRPC Sentiment Server"
-            echo ">>> Environment: $ENV"
             echo ">>> Branch: $BRANCH_NAME"
             echo ">>> Work dir: $WORK_DIR"
 
@@ -107,7 +95,6 @@ jobs:
             echo ">>> Fixing permissions..."
             chmod -R u+rwX "$WORK_DIR"
 
-            # Uncomment if you want to restart the service after deploy
             # echo ">>> Restarting gRPC sentiment service..."
             # sudo systemctl daemon-reload
             # sudo systemctl restart your-grpc-service-name.service
