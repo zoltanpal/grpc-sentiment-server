@@ -19,45 +19,61 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: true
 
-      - name: Deploy to the server via SSH
-        uses: appleboy/ssh-action@v1.1.0
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
+
             ENV=${{ github.event.inputs.environment }}
             WORK_DIR=${{ secrets.SERVER_DEPLOYMENT_PATH }}
 
             echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
 
             # Ensure work dir exists
-            mkdir -p $WORK_DIR
             cd $WORK_DIR
             
-            git config --global --add safe.directory $WORK_DIR
+            export PYENV_ROOT="$HOME/.pyenv"
+            export PATH="$PYENV_ROOT/bin:$PATH"
 
-            # Clone repo if missing
-            if [ ! -d ".git" ]; then
-              git clone git@github.com:zoltanpal/grpc-sentiment-server.git .
+            if command -v pyenv >/dev/null 2>&1; then
+              eval "$(pyenv init -)"
+            else
+              echo "pyenv not found in PATH"
+              exit 1
             fi
 
-            # Fetch latest changes and reset to current ref
-            git fetch origin
-            git reset --hard origin/${{ github.ref_name }}
-            git clean -fd
-            git checkout ${{ github.ref_name }}
+            echo "pyenv version: $(pyenv version)"
+            echo "python version: $(python --version)"
 
-            # Set up Python virtual environment
+            echo "Fetching latest code..."
+            git fetch --prune origin
+
+            echo "Checking out branch..."
+            git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
+
+            echo "Resetting working tree..."
+            git reset --hard "origin/$BRANCH_NAME"
+
+            echo "Cleaning untracked files..."
+            git clean -fd -e .env -e .venv
+
             if [ ! -d ".venv" ]; then
-              python3 -m venv .venv
+              echo "Creating virtual environment..."
+              python -m venv .venv
             fi
 
+            echo "Activating virtual environment..."
             source .venv/bin/activate
-            pip install --upgrade pip setuptools wheel
-            cd sentiment
+
+            # pip install --upgrade pip setuptools wheel
+
             pip install -r requirements.txt
 
             # Download language models (if script exists)
@@ -65,10 +81,9 @@ jobs:
               bash download_language_models.sh $WORK_DIR
             fi
 
-            # Fix ownership for runtime
-            sudo chown -R www-data:www-data $WORK_DIR
+            chmod -R u+rwX "$WORK_DIR"
 
-            echo ">>> Restarting gRPC sentiment service"
-            sudo systemctl daemon-reload
-            #sudo systemctl restart grpc-sentiment.service
-            #sudo systemctl status grpc-sentiment.service --no-pager
+            # echo ">>> Restarting gRPC sentiment service"
+            # sudo systemctl daemon-reload
+
+            echo "Deployment finished successfully."
