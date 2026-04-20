@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Select environment to deploy'
+        description: "Select environment to deploy"
         required: true
-        default: 'dev'
+        default: "dev"
         type: choice
         options:
           - dev
@@ -15,6 +15,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      ENV: ${{ github.event.inputs.environment }}
+      BRANCH_NAME: ${{ github.ref_name }}
+      WORK_DIR: ${{ github.event.inputs.environment == 'prod' && secrets.PROD_SERVER_DEPLOYMENT_PATH || secrets.DEV_SERVER_DEPLOYMENT_PATH }}
 
     steps:
       - name: Checkout repository
@@ -29,61 +34,83 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            set -e
+            set -eu
 
-            ENV=${{ github.event.inputs.environment }}
-            WORK_DIR=${{ secrets.SERVER_DEPLOYMENT_PATH }}
+            echo ">>> Deploying gRPC Sentiment Server"
+            echo ">>> Environment: $ENV"
+            echo ">>> Branch: $BRANCH_NAME"
+            echo ">>> Work dir: $WORK_DIR"
 
-            echo ">>> Deploying gRPC Sentiment Server to $WORK_DIR ($ENV)"
+            if [ -z "$BRANCH_NAME" ]; then
+              echo "ERROR: BRANCH_NAME is empty"
+              exit 1
+            fi
 
-            # Ensure work dir exists
-            cd $WORK_DIR
-            
+            if [ -z "$WORK_DIR" ]; then
+              echo "ERROR: WORK_DIR is empty"
+              exit 1
+            fi
+
+            if [ ! -d "$WORK_DIR" ]; then
+              echo "ERROR: Deployment directory does not exist: $WORK_DIR"
+              exit 1
+            fi
+
+            cd "$WORK_DIR"
+
             export PYENV_ROOT="$HOME/.pyenv"
             export PATH="$PYENV_ROOT/bin:$PATH"
 
             if command -v pyenv >/dev/null 2>&1; then
               eval "$(pyenv init -)"
             else
-              echo "pyenv not found in PATH"
+              echo "ERROR: pyenv not found in PATH"
               exit 1
             fi
 
-            echo "pyenv version: $(pyenv version)"
-            echo "python version: $(python --version)"
+            echo ">>> pyenv version: $(pyenv version)"
+            echo ">>> python version: $(python --version)"
 
-            echo "Fetching latest code..."
+            echo ">>> Fetching latest code..."
             git fetch --prune origin
 
-            echo "Checking out branch..."
+            if ! git show-ref --verify --quiet "refs/remotes/origin/$BRANCH_NAME"; then
+              echo "ERROR: Remote branch origin/$BRANCH_NAME does not exist"
+              exit 1
+            fi
+
+            echo ">>> Checking out branch..."
             git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
 
-            echo "Resetting working tree..."
+            echo ">>> Resetting working tree..."
             git reset --hard "origin/$BRANCH_NAME"
 
-            echo "Cleaning untracked files..."
+            echo ">>> Cleaning untracked files..."
             git clean -fd -e .env -e .venv
 
             if [ ! -d ".venv" ]; then
-              echo "Creating virtual environment..."
+              echo ">>> Creating virtual environment..."
               python -m venv .venv
             fi
 
-            echo "Activating virtual environment..."
-            source .venv/bin/activate
+            echo ">>> Activating virtual environment..."
+            . .venv/bin/activate
 
-            # pip install --upgrade pip setuptools wheel
-
+            echo ">>> Installing dependencies..."
             pip install -r requirements.txt
 
-            # Download language models (if script exists)
             if [ -f download_language_models.sh ]; then
-              bash download_language_models.sh $WORK_DIR
+              echo ">>> Downloading language models..."
+              bash download_language_models.sh "$WORK_DIR"
             fi
 
+            echo ">>> Fixing permissions..."
             chmod -R u+rwX "$WORK_DIR"
 
-            # echo ">>> Restarting gRPC sentiment service"
+            # Uncomment if you want to restart the service after deploy
+            # echo ">>> Restarting gRPC sentiment service..."
             # sudo systemctl daemon-reload
+            # sudo systemctl restart your-grpc-service-name.service
+            # sudo systemctl status your-grpc-service-name.service --no-pager
 
-            echo "Deployment finished successfully."
+            echo ">>> Deployment finished successfully."
