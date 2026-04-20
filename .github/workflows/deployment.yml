@@ -85,7 +85,7 @@ jobs:
             . .venv/bin/activate
 
             echo ">>> Installing dependencies..."
-            pip install -r requirements.txt
+            pip install .
 
             if [ -f download_language_models.sh ]; then
               echo ">>> Downloading language models..."
